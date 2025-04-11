@@ -7,7 +7,7 @@ import ChatLoading from "./ChatLoading";
 import GroupChatModal from "./miscellaneous/GroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
 
-const MyChats = ({ fetchAgain }) => {
+const MyChats = ({ fetchAgain, socket }) => {
   const [loggedUser, setLoggedUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,6 +46,22 @@ const MyChats = ({ fetchAgain }) => {
     setLoggedUser(userInfo);
     fetchChats();
   }, [fetchAgain, fetchChats]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = (newMessageReceived) => {
+      if (!selectedChat || selectedChat._id !== newMessageReceived.chat._id) {
+        fetchChats();
+      }
+    };
+
+    socket.on("message received", handleNewMessage);
+
+    return () => {
+      socket.off("message received", handleNewMessage);
+    };
+  }, [socket, selectedChat, fetchChats]);
 
   const handleChatSelect = (chat) => {
     setSelectedChat(chat);
@@ -134,14 +150,12 @@ const MyChats = ({ fetchAgain }) => {
                 </Text>
                 {chat.latestMessage && (
                   <Text fontSize="xs" noOfLines={1} color="#66ffcc">
-                    {/* <b>{chat.latestMessage.sender.name}: </b>
-                    {chat.latestMessage.content} */}
                     <b>
                       {chat.latestMessage.sender._id === user._id
                         ? "You"
-                        : chat.latestMessage.sender.name}{" "}
-                      :{" "}
-                    </b>
+                        : chat.latestMessage.sender.name}
+                      :
+                    </b>{" "}
                     {chat.latestMessage.content.length > 50
                       ? chat.latestMessage.content.substring(0, 51) + "..."
                       : chat.latestMessage.content}

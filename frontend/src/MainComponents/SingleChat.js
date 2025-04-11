@@ -1,27 +1,24 @@
-import { useRef } from "react";
-import { FormControl } from "@chakra-ui/react";
-import { Input } from "@chakra-ui/react";
-import { Box, Text } from "@chakra-ui/react";
-import "./styles.css";
-import { IconButton, Spinner, useToast } from "@chakra-ui/react";
-import { getSender, getSenderFull } from "../config/ChatLogics";
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useRef, useEffect, useState } from "react";
+import {
+  Box,
+  FormControl,
+  IconButton,
+  Input,
+  Spinner,
+  Text,
+  useToast,
+} from "@chakra-ui/react";
 import { ArrowBackIcon } from "@chakra-ui/icons";
+import { getSender, getSenderFull } from "../config/ChatLogics";
 import ProfileModal from "./miscellaneous/ProfileModal";
 import ScrollableChat from "./ScrollableChat";
 import Lottie from "react-lottie";
 import animationData from "../animations/LottieTypingAnimation.json";
-
-import io from "socket.io-client";
+import axios from "axios";
 import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
-const ENDPOINT = "https://yap-hub-chat-app.onrender.com"
 
-
-var socket;
-
-const SingleChat = ({ fetchAgain, setFetchAgain }) => {
+const SingleChat = ({ fetchAgain, setFetchAgain, socket }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newMessage, setNewMessage] = useState("");
@@ -39,7 +36,8 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     },
   };
 
-  const { selectedChat, setSelectedChat, user, notification, setNotification } = ChatState();
+  const { selectedChat, setSelectedChat, user, notification, setNotification } =
+    ChatState();
 
   const fetchMessages = async () => {
     if (!selectedChat) return;
@@ -53,7 +51,10 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
       setLoading(true);
 
-      const { data } = await axios.get(`/api/message/${selectedChat._id}`, config);
+      const { data } = await axios.get(
+        `/api/message/${selectedChat._id}`,
+        config
+      );
       setMessages(data);
       setLoading(false);
 
@@ -71,8 +72,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   };
 
   useEffect(() => {
-    socket = io(ENDPOINT);
-    socket.emit("setup", user);
+    if (!socket) return;
     socket.on("connected", () => setSocketConnected(true));
     socket.on("typing", () => setIsTyping(true));
     socket.on("stop typing", () => setIsTyping(false));
@@ -82,8 +82,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       socket.off("typing");
       socket.off("stop typing");
     };
-    //eslint-disable-next-line
-  }, []);
+  }, [socket]);
 
   const sendMessage = async (event) => {
     if (event.key === "Enter" && newMessage) {
@@ -96,10 +95,14 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
           },
         };
         setNewMessage("");
-        const { data } = await axios.post("/api/message", {
-          content: newMessage,
-          chatId: selectedChat,
-        }, config);
+        const { data } = await axios.post(
+          "/api/message",
+          {
+            content: newMessage,
+            chatId: selectedChat,
+          },
+          config
+        );
         socket.emit("new message", data);
         setMessages([...messages, data]);
       } catch (error) {
@@ -132,7 +135,9 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
       if (!currentChat || currentChat._id !== chatFromMessage) {
         setNotification((prevNotifications) => {
-          const exists = prevNotifications.some((n) => n._id === newMessageRecieved._id);
+          const exists = prevNotifications.some(
+            (n) => n._id === newMessageRecieved._id
+          );
           if (!exists) {
             setFetchAgain((prev) => !prev);
             return [newMessageRecieved, ...prevNotifications];
@@ -144,13 +149,17 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       }
     };
 
-    socket.on("message received", handleMessageReceived);
+    if (socket) {
+      socket.on("message received", handleMessageReceived);
+    }
 
     return () => {
-      socket.off("message received", handleMessageReceived);
+      if (socket) {
+        socket.off("message received", handleMessageReceived);
+      }
     };
     //eslint-disable-next-line
-  }, [notification, selectedChat]);
+  }, [notification, selectedChat, socket]);
 
   const typingHandler = (e) => {
     setNewMessage(e.target.value);
@@ -280,5 +289,3 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 };
 
 export default SingleChat;
-
-
